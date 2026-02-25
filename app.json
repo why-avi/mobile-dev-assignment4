@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "ShopLux",
+    "slug": "ecommerce-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shoplux.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0F"
+      },
+      "package": "com.shoplux.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "scheme": "shoplux",
+    "plugins": ["expo-router", "expo-sqlite"]
+  }
+}

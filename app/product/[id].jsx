@@ -1,6 +1,6 @@
 // app/product/[id].jsx
 // Dynamic product detail screen.
-// `id` is extracted with useLocalSearchParams() — Expo Router populates it
+// `id` is extracted with useLocalSearchParams()  EExpo Router populates it
 // automatically from the [id] segment in the file name.
 
 import React, { useState, useEffect } from 'react';
@@ -181,6 +181,14 @@ export default function ProductDetail() {
             </View>
           </View>
 
+          {/* Delete Button */} 
+              <TouchableOpacity 
+              style={styles.dltWrapper}
+              onPress={() => deleteProduct()}>
+                <Ionicons name='close-outline' size={20} style={styles.dltBadge} />
+                <Text style={styles.dltText}>Delete</Text>
+              </TouchableOpacity>
+
           {/* Spacer so content clears the CTA bar */}
           <View style={{ height: 80 }} />
         </View>
@@ -211,6 +219,32 @@ export default function ProductDetail() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+
+  //--- Delete Button -------------------------------------------------
+  dltWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.danger,
+    backgroundColor: Colors.danger + '18',
+    gap: 6,
+  },
+  dltBadge: {
+    color: Colors.danger,
+  },
+  dltText: {
+    color: Colors.danger,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
 
   // ── Floating header ───────────────────────────────────────────────────────
   floatingHeader: {
@@ -362,3 +396,4 @@ const styles = StyleSheet.create({
   backBtn:      { backgroundColor: Colors.accent, borderRadius: Radius.lg, paddingHorizontal: 24, paddingVertical: 12 },
   backBtnText:  { color: Colors.bg, fontWeight: '700', fontSize: 15 },
 });
+

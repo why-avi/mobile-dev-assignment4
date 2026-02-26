@@ -157,3 +157,17 @@ export function searchProducts(query) {
       p.category.toLowerCase().includes(q)
   );
 }
+
+export function upsertProducts(items) {
+  if (!Array.isArray(items) || items.length === 0) return;
+
+  items.forEach((item) => {
+    const normalized = { ...item, id: String(item.id) };
+    const idx = PRODUCTS.findIndex((p) => p.id === normalized.id);
+    if (idx >= 0) {
+      PRODUCTS[idx] = normalized;
+    } else {
+      PRODUCTS.unshift(normalized);
+    }
+  });
+}

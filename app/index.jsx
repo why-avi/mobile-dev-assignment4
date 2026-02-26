@@ -1,6 +1,6 @@
 // app/index.jsx
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Image,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,29 +19,108 @@ import { useRouter } from 'expo-router';
 
 import ProductCard from '../components/ProductCard';
 import CartButton from '../components/CartButton';
+import AddButton from '../components/AddButton';
 import {
   PRODUCTS,
   CATEGORIES,
-  searchProducts,
-  getProductsByCategory,
+  upsertProducts,
 } from '../services/products';
+import { addCustomProduct, getCustomProducts } from '../services/database';
 import { Colors, Spacing, Radius } from '../services/theme';
 
-const FEATURED = PRODUCTS.slice(0, 3); // Just taking the first 4 products as featured for this example
+const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [products, setProducts] = useState(PRODUCTS);
 
-  // Derived list — search takes priority over category filter
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCustomProducts = async () => {
+      try {
+        const rows = await getCustomProducts();
+        if (!mounted || rows.length === 0) return;
+
+        const hydrated = rows.map((p) => ({
+          ...p,
+          image: DEFAULT_IMAGE,
+          images: [DEFAULT_IMAGE],
+        }));
+
+        upsertProducts(hydrated);
+        setProducts((prev) => {
+          const map = new Map(prev.map((p) => [String(p.id), p]));
+          hydrated.forEach((p) => map.set(String(p.id), p));
+          return Array.from(map.values());
+        });
+      } catch (err) {
+        console.error('[HomeScreen] loadCustomProducts:', err);
+      }
+    };
+
+    loadCustomProducts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Derived list  Esearch takes priority over category filter
   //useMemo memorizes (caches) a computed value so React doesn’t recompute it on every render.
   // Why useMemo- In React, components re-render often. If you calculate something expensive each time, it can slow things down.
   // useMemo runs the function only when data changes. Otherwise, it returns the cached value.
   const displayedProducts = useMemo(() => {
-    if (query.trim()) return searchProducts(query);
-    return getProductsByCategory(activeCategory);
-  }, [query, activeCategory]);
+    const q = query.toLowerCase().trim();
+
+    return products.filter((p) => {
+      const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.tags.some((t) => t.toLowerCase().includes(q));
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, query, activeCategory]);
+
+  const featuredProducts = useMemo(() => products.slice(0, 3), [products]);
+
+  const handleAddProduct = useCallback(
+    async (input) => {
+      const category =
+        input.category?.trim() || (activeCategory === 'All' ? 'Accessories' : activeCategory);
+      const nextId = String(
+        products.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1
+      );
+      const created = {
+        id: nextId,
+        name: input.name,
+        price: input.price,
+        originalPrice: null,
+        category,
+        rating: 0,
+        reviews: 0,
+        image: DEFAULT_IMAGE,
+        images: [DEFAULT_IMAGE],
+        description: input.description,
+        badge: 'New',
+        inStock: true,
+        tags: input.tags,
+      };
+
+      setProducts((prev) => [created, ...prev.filter((p) => String(p.id) !== created.id)]);
+
+      upsertProducts([created]);
+      await addCustomProduct(created);
+      setQuery('');
+      Alert.alert('Product Added', `${created.name} was added to the catalog.`);
+    },
+    [activeCategory, products]
+  );
 
   const getGreeting = () => {
     const currentHour = new Date().getHours();
@@ -84,6 +164,7 @@ export default function HomeScreen() {
             <Text style={styles.headline}>Find your style.</Text>
           </View>
           <View style={styles.topActions}>
+            <AddButton onAddProduct={handleAddProduct} />
             <CartButton />
             <TouchableOpacity onPress={() => router.push('/profile')}>
             
@@ -112,7 +193,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Featured horizontal banner — hidden during search */}
+        {/* Featured horizontal banner  Ehidden during search */}
         {!query.trim() && (
           <View style={styles.featuredSection}>
             <Text style={styles.sectionLabel}>Featured</Text>
@@ -121,7 +202,7 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.featuredScroll}
             >
-              {FEATURED.map((item) => (
+              {featuredProducts.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.featuredCard}
@@ -176,7 +257,7 @@ export default function HomeScreen() {
         </View>
       </View>
     ),
-    [query, activeCategory, displayedProducts.length, router]
+    [query, activeCategory, displayedProducts.length, featuredProducts, handleAddProduct, router]
   );
 
   const renderItem = useCallback(({ item }) => <ProductCard product={item} />, []);
@@ -320,3 +401,5 @@ const styles = StyleSheet.create({
   emptyTitle:   { color: Colors.text, fontSize: 18, fontWeight: '700', marginBottom: 6 },
   emptySubtitle:{ color: Colors.textMuted, fontSize: 14 },
 });
+
+

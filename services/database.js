@@ -50,6 +50,22 @@ export async function initDatabase() {
       status     TEXT    DEFAULT 'confirmed',
       created_at TEXT    DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS products (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id     TEXT    NOT NULL UNIQUE,
+      name           TEXT    NOT NULL,
+      price          REAL    NOT NULL,
+      original_price REAL,
+      category       TEXT    NOT NULL,
+      rating         REAL    NOT NULL DEFAULT 0,
+      reviews        INTEGER NOT NULL DEFAULT 0,
+      description    TEXT    NOT NULL DEFAULT '',
+      badge          TEXT,
+      in_stock       INTEGER NOT NULL DEFAULT 1,
+      tags_json      TEXT    NOT NULL DEFAULT '[]',
+      created_at     TEXT    DEFAULT (datetime('now'))
+    );
   `);
 
   // Seed default user once
@@ -158,4 +174,51 @@ export async function placeOrder(items, total) {
     [total, JSON.stringify(items), 'confirmed']
   );
   await clearCart();
+}
+
+// PRODUCTS -------------------------------------------------------------
+
+/** Returns custom products added by user (persisted in SQLite) */
+export async function getCustomProducts() {
+  const db = await getDB();
+  const rows = await db.getAllAsync('SELECT * FROM products ORDER BY created_at DESC');
+
+  return (rows ?? []).map((row) => ({
+    id: String(row.product_id),
+    name: row.name,
+    price: Number(row.price),
+    originalPrice: row.original_price == null ? null : Number(row.original_price),
+    category: row.category,
+    rating: Number(row.rating ?? 0),
+    reviews: Number(row.reviews ?? 0),
+    description: row.description ?? '',
+    badge: row.badge ?? null,
+    inStock: Number(row.in_stock ?? 1) === 1,
+    tags: (() => {
+      try {
+        const parsed = JSON.parse(row.tags_json ?? '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    })(),
+  }));
+}
+
+/** Inserts or updates a custom product by product_id (minimal add-product payload) */
+export async function addCustomProduct(product) {
+  const db = await getDB();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO products
+      (product_id, name, price, category, description, tags_json)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      String(product.id),
+      product.name,
+      Number(product.price),
+      product.category ?? 'Accessories',
+      product.description ?? '',
+      JSON.stringify(product.tags ?? []),
+    ]
+  );
 }

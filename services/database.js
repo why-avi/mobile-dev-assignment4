@@ -222,3 +222,9 @@ export async function addCustomProduct(product) {
     ]
   );
 }
+
+/* Removes custom product by product ID */
+export async function deleteCustomProduct(productId) {
+  const db = await getDB();
+  await db.runAsync('DELETE FROM products WHERE product_id = ?', [String(productId)]);
+}

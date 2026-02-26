@@ -1,6 +1,6 @@
 // app/index.jsx
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 import ProductCard from '../components/ProductCard';
 import CartButton from '../components/CartButton';
@@ -36,36 +37,36 @@ export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [products, setProducts] = useState(PRODUCTS);
 
-  useEffect(() => {
-    let mounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
 
-    const loadCustomProducts = async () => {
-      try {
-        const rows = await getCustomProducts();
-        if (!mounted || rows.length === 0) return;
+      const loadProducts = async () => {
+        try {
+          const rows = await getCustomProducts();
+          const hydrated = (rows ?? []).map((p) => ({
+            ...p,
+            image: DEFAULT_IMAGE,
+            images: [DEFAULT_IMAGE],
+          }));
 
-        const hydrated = rows.map((p) => ({
-          ...p,
-          image: DEFAULT_IMAGE,
-          images: [DEFAULT_IMAGE],
-        }));
+          upsertProducts(hydrated);
 
-        upsertProducts(hydrated);
-        setProducts((prev) => {
-          const map = new Map(prev.map((p) => [String(p.id), p]));
-          hydrated.forEach((p) => map.set(String(p.id), p));
-          return Array.from(map.values());
-        });
-      } catch (err) {
-        console.error('[HomeScreen] loadCustomProducts:', err);
-      }
-    };
+          if (!alive) return;
+          const merged = new Map(PRODUCTS.map((p) => [String(p.id), p]));
+          hydrated.forEach((p) => merged.set(String(p.id), p));
+          setProducts(Array.from(merged.values()));
+        } catch (err) {
+          console.error('[HomeScreen] loadProducts:', err);
+        }
+      };
 
-    loadCustomProducts();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      loadProducts();
+      return () => {
+        alive = false;
+      };
+    }, [])
+  );
 
   // Derived list  Esearch takes priority over category filter
   //useMemo memorizes (caches) a computed value so React doesn’t recompute it on every render.

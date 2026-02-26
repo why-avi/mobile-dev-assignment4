@@ -171,3 +171,13 @@ export function upsertProducts(items) {
     }
   });
 }
+
+export function removeProductById(id) {
+  const target = String(id);
+  const idx = PRODUCTS.findIndex((p) => p.id === target);
+  if (idx >= 0) {
+    PRODUCTS.splice(idx, 1);
+    return true;
+  }
+  return false;
+}

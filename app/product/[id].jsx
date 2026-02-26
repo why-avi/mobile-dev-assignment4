@@ -18,8 +18,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getProductById } from '../../services/products';
-import { addToCart } from '../../services/database';
+import { getProductById, removeProductById } from '../../services/products';
+import { addToCart, deleteCustomProduct } from '../../services/database';
 import { useCart } from '../../services/CartContext';
 import { Colors, Spacing, Radius } from '../../services/theme';
 
@@ -51,6 +51,33 @@ export default function ProductDetail() {
     } catch (err) {
       Alert.alert('Error', 'Could not add to cart. Please try again.');
     }
+  };
+
+  const handleDeleteProduct = () => {
+    if (!product) return;
+
+    Alert.alert(
+      'Delete Product',
+      `Delete "${product.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remove from both SQLite custom table and in-memory catalog.
+              await deleteCustomProduct(product.id);
+              removeProductById(product.id);
+              Alert.alert('Deleted', 'Product removed successfully.');
+              router.replace('/');
+            } catch (err) {
+              Alert.alert('Error', 'Could not delete product. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // ── Not found ─────────────────────────────────────────────────────────────
@@ -184,7 +211,7 @@ export default function ProductDetail() {
           {/* Delete Button */} 
               <TouchableOpacity 
               style={styles.dltWrapper}
-              onPress={() => deleteProduct()}>
+              onPress={handleDeleteProduct}>
                 <Ionicons name='close-outline' size={20} style={styles.dltBadge} />
                 <Text style={styles.dltText}>Delete</Text>
               </TouchableOpacity>
